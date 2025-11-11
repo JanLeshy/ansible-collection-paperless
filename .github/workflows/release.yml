@@ -7,8 +7,28 @@ name: Release to Ansible Galaxy
       - 'v*.*.*'  # Trigger on version tags like v1.0.0, v1.0.1, etc.
 
 jobs:
+  lint:
+    name: Lint Collection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Ansible and ansible-lint
+        run: pip install ansible ansible-lint
+
+      - name: Run Ansible Lint
+        run: ansible-lint .
+
   build:
     name: Build Collection
+    needs: lint
     runs-on: ubuntu-latest
     
     steps:
