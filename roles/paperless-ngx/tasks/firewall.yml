@@ -1,0 +1,16 @@
+---
+- name: Check if UFW is installed
+  ansible.builtin.command:
+    cmd: which ufw
+  register: ufw_check
+  changed_when: false
+  failed_when: false
+
+- name: Allow Paperless port through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ paperless_webserver_port }}"
+    proto: tcp
+    comment: "Paperless-ngx web interface"
+  become: true
+  when: ufw_check.rc == 0

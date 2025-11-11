@@ -1,0 +1,23 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
+- name: Restart paperless services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+    daemon_reload: true
+  loop:
+    - paperless-webserver
+    - paperless-consumer
+    - paperless-task-queue
+    - paperless-scheduler
+  become: true
+
+- name: Reload PostgreSQL
+  ansible.builtin.systemd:
+    name: postgresql
+    state: reloaded
+  become: true

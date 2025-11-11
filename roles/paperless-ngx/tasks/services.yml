@@ -1,0 +1,126 @@
+---
+- name: Copy systemd service files from archive
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "/etc/systemd/system/{{ item.path | basename }}"
+    owner: root
+    group: root
+    mode: '0644'
+    remote_src: true
+  loop: "{{ service_examples.files | default([]) }}"
+  notify:
+    - Reload systemd
+    - Restart paperless services
+
+- name: Adjust service file user
+  ansible.builtin.replace:
+    path: "/etc/systemd/system/{{ item.path | basename }}"
+    regexp: '^User=.*'
+    replace: "User={{ paperless_user }}"
+  loop: "{{ service_examples.files | default([]) }}"
+  when: service_examples.matched > 0
+
+- name: Adjust service file group
+  ansible.builtin.replace:
+    path: "/etc/systemd/system/{{ item.path | basename }}"
+    regexp: '^Group=.*'
+    replace: "Group={{ paperless_group }}"
+  loop: "{{ service_examples.files | default([]) }}"
+  when: service_examples.matched > 0
+
+- name: Adjust service file working directory
+  ansible.builtin.replace:
+    path: "/etc/systemd/system/{{ item.path | basename }}"
+    regexp: '^WorkingDirectory=.*'
+    replace: "WorkingDirectory={{ paperless_home }}/src"
+  loop: "{{ service_examples.files | default([]) }}"
+  when: service_examples.matched > 0
+
+- name: Replace existing EnvironmentFile if present
+  ansible.builtin.replace:
+    path: "/etc/systemd/system/{{ item.path | basename }}"
+    regexp: '^EnvironmentFile=.*'
+    replace: "EnvironmentFile={{ paperless_home }}/paperless.conf"
+  loop: "{{ service_examples.files | default([]) }}"
+  when: service_examples.matched > 0
+
+- name: Add EnvironmentFile to service files (if not present)
+  ansible.builtin.lineinfile:
+    path: "/etc/systemd/system/{{ item.path | basename }}"
+    line: "EnvironmentFile={{ paperless_home }}/paperless.conf"
+    insertafter: '^WorkingDirectory='
+    state: present
+    regexp: '^EnvironmentFile='
+  loop: "{{ service_examples.files | default([]) }}"
+  when: service_examples.matched > 0
+
+- name: Replace existing PATH environment variable if present
+  ansible.builtin.replace:
+    path: "/etc/systemd/system/{{ item.path | basename }}"
+    regexp: '^Environment="PATH=.*"'
+    replace: 'Environment="PATH={{ paperless_home }}/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"'
+  loop: "{{ service_examples.files | default([]) }}"
+  when: service_examples.matched > 0
+
+- name: Add PATH environment variable if not present
+  ansible.builtin.lineinfile:
+    path: "/etc/systemd/system/{{ item.path | basename }}"
+    line: 'Environment="PATH={{ paperless_home }}/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"'
+    insertafter: '^EnvironmentFile='
+    state: present
+    regexp: '^Environment="PATH='
+  loop: "{{ service_examples.files | default([]) }}"
+  when: service_examples.matched > 0
+
+- name: Adjust service file paths (replace /opt/paperless)
+  ansible.builtin.replace:
+    path: "/etc/systemd/system/{{ item.path | basename }}"
+    regexp: '/opt/paperless'
+    replace: "{{ paperless_home }}"
+  loop: "{{ service_examples.files | default([]) }}"
+  when: service_examples.matched > 0
+
+- name: Adjust service file granian path in ExecStart
+  ansible.builtin.replace:
+    path: "/etc/systemd/system/{{ item.path | basename }}"
+    regexp: 'exec granian'
+    replace: "exec {{ paperless_home }}/venv/bin/granian"
+  loop: "{{ service_examples.files | default([]) }}"
+  when: service_examples.matched > 0
+
+- name: Adjust service file Python path in ExecStart (python3 manage.py)
+  ansible.builtin.replace:
+    path: "/etc/systemd/system/{{ item.path | basename }}"
+    regexp: '^ExecStart=python3 '
+    replace: "ExecStart={{ paperless_home }}/venv/bin/python3 "
+  loop: "{{ service_examples.files | default([]) }}"
+  when: service_examples.matched > 0
+
+- name: Fix task-queue service ExecStart with full celery command
+  ansible.builtin.replace:
+    path: "/etc/systemd/system/paperless-task-queue.service"
+    regexp: '^ExecStart=.*celery.*worker.*'
+    replace: "ExecStart={{ paperless_home }}/venv/bin/celery --app paperless worker --loglevel INFO"
+  when: service_examples.matched > 0
+
+- name: Adjust service file Celery path in ExecStart (for other celery services)
+  ansible.builtin.replace:
+    path: "/etc/systemd/system/{{ item.path | basename }}"
+    regexp: '^ExecStart=(.*)celery (.*)'
+    replace: "ExecStart={{ paperless_home }}/venv/bin/celery \\2"
+  loop: "{{ service_examples.files | default([]) }}"
+  when: >
+    service_examples.matched > 0 and
+    item.path | basename != 'paperless-task-queue.service'
+
+- name: Enable and start paperless services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+    daemon_reload: true
+  loop:
+    - paperless-webserver
+    - paperless-consumer
+    - paperless-task-queue
+    - paperless-scheduler

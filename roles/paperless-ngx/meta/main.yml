@@ -1,0 +1,32 @@
+---
+galaxy_info:
+  role_name: paperless_ngx
+  author: JanLeshy
+  description: Install and configure Paperless-ngx document management system
+  company: Homelab
+
+  license: MIT
+
+  min_ansible_version: "2.9"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+
+  galaxy_tags:
+    - paperless
+    - document
+    - management
+    - ocr
+    - dms
+    - pdf
+    - scanner
+    - archive
+
+dependencies: []

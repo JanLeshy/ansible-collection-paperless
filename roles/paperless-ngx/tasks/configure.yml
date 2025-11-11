@@ -1,0 +1,28 @@
+---
+- name: Configure paperless
+  ansible.builtin.template:
+    src: paperless.conf.j2
+    dest: "{{ paperless_home }}/paperless.conf"
+    owner: "{{ paperless_user }}"
+    group: "{{ paperless_group }}"
+    mode: '0644'
+  notify: Restart paperless services
+
+- name: Find ImageMagick policy file
+  ansible.builtin.find:
+    paths:
+      - /etc/ImageMagick-6
+      - /etc/ImageMagick-7
+    patterns:
+      - policy.xml
+    file_type: file
+  register: imagemagick_policy_files
+  when: paperless_imagemagick_allow_pdf | bool
+
+- name: Configure ImageMagick policy for PDF
+  ansible.builtin.replace:
+    path: "{{ item.path }}"
+    regexp: '<policy domain="coder" rights="none" pattern="PDF" />'
+    replace: '<policy domain="coder" rights="read|write" pattern="PDF" />'
+  loop: "{{ imagemagick_policy_files.files | default([]) }}"
+  when: paperless_imagemagick_allow_pdf | bool and imagemagick_policy_files.matched > 0

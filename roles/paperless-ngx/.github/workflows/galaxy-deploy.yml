@@ -1,0 +1,46 @@
+---
+name: Deploy to Ansible Galaxy
+
+"on":
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  deploy:
+    name: Deploy to Galaxy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible
+        run: |
+          pip install ansible-core
+
+      - name: Get tag name
+        id: tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Import role to Galaxy
+        run: |
+          ansible-galaxy role import \
+            --token ${{ secrets.GALAXY_API_TOKEN }} \
+            ${{ github.repository_owner }} \
+            ${{ github.event.repository.name }}
+        env:
+          ANSIBLE_GALAXY_SERVER_LIST: release_galaxy
+          ANSIBLE_GALAXY_SERVER_RELEASE_GALAXY_URL: https://galaxy.ansible.com/
+
+      - name: Deployment successful
+        run: |
+          echo "Role successfully deployed to Ansible Galaxy!"
+          echo "Tag: ${{ steps.tag.outputs.tag }}"
+          echo "Role: ${{ github.repository_owner }}.${{ github.event.repository.name }}"
+          echo "View at: https://galaxy.ansible.com/${{ github.repository_owner }}/${{ github.event.repository.name }}"

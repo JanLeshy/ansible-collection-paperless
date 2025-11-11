@@ -1,0 +1,96 @@
+---
+name: Release to Ansible Galaxy
+
+"on":
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v1.0.0, v1.0.1, etc.
+
+jobs:
+  build:
+    name: Build Collection
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Ansible
+        run: pip install ansible-core
+
+      - name: Build Collection
+        run: ansible-galaxy collection build
+
+      - name: Upload Collection Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: collection
+          path: '*.tar.gz'
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Collection Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: collection
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: '*.tar.gz'
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    name: Deploy to Ansible Galaxy
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Ansible
+        run: pip install ansible-core
+
+      - name: Download Collection Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: collection
+
+      - name: Deploy to Ansible Galaxy
+        run: |
+          ansible-galaxy collection publish *.tar.gz --api-key=${{ secrets.GALAXY_API_KEY }}
+        env:
+          GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}
+
+      - name: Deployment Success
+        run: |
+          echo "✅ Collection successfully published to Ansible Galaxy!"
+          echo "📦 Install with: ansible-galaxy collection install janleshy.paperless"

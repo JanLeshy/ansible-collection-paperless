@@ -1,0 +1,10 @@
+---
+- name: Clean up temporary archive file
+  ansible.builtin.file:
+    path: "{{ paperless_tmp_dir }}/{{ paperless_archive_name }}"
+    state: absent
+
+- name: Clean up temporary extracted directory
+  ansible.builtin.file:
+    path: "{{ paperless_extracted_dir }}"
+    state: absent

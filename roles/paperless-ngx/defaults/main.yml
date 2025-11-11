@@ -1,0 +1,47 @@
+---
+# Paperless-ngx Version
+paperless_version: "latest"  # or example "v2.19.5" for release
+
+# Installation paths
+paperless_home: "/opt/paperless"
+paperless_user: "paperless"
+paperless_group: "paperless"
+paperless_tmp_dir: "/tmp"
+
+# Directories
+paperless_media_dir: "{{ paperless_home }}/media"
+paperless_data_dir: "{{ paperless_home }}/data"
+paperless_consume_dir: "{{ paperless_home }}/consume"
+
+# Redis configuration
+paperless_redis: "redis://localhost:6379"
+
+# Database configuration
+# Option 1: Use external database URL (recommended for remote databases)
+# If set, this will be used and no local database will be installed
+paperless_db_url: ""  # Example: "postgresql://user:password@host:5432/dbname"
+# Option 2: Use individual database parameters (for local database)
+paperless_dbengine: "postgres"  # Options: sqlite, postgres, mariadb
+paperless_dbhost: "localhost"
+paperless_dbport: "5432"  # PostgreSQL default, adjust for MariaDB
+paperless_dbname: "paperless"
+paperless_dbuser: "paperless"
+paperless_db_password: "change_me"  # Override this in vault
+
+# Paperless configuration
+paperless_secret_key: "{{ paperless_secret_key | default('change_me_secret_key') }}"
+paperless_url: ""  # Set if behind reverse proxy
+paperless_time_zone: "Europe/Berlin"
+paperless_ocr_language: "eng"  # Language for OCR (eng, deu, etc.)
+
+# Superuser configuration (optional)
+paperless_superuser_name: "yourname"
+paperless_superuser_email: "yourmail@example.com"
+paperless_superuser_password: "{{ paperless_superuser_password | default('change_me') }}"
+paperless_create_superuser: true  # Set to true to create superuser
+
+# ImageMagick policy configuration
+paperless_imagemagick_allow_pdf: true  # Allow PDF processing in ImageMagick
+
+# Systemd services
+paperless_webserver_port: "8000"

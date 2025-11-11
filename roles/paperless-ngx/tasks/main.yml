@@ -1,0 +1,42 @@
+---
+- name: Install dependencies
+  ansible.builtin.import_tasks: dependencies.yml
+  tags:
+    - paperless
+    - dependencies
+
+- name: Install paperless-ngx
+  ansible.builtin.import_tasks: install.yml
+  tags:
+    - paperless
+    - install
+
+- name: Configure paperless-ngx
+  ansible.builtin.import_tasks: configure.yml
+  tags:
+    - paperless
+    - config
+
+- name: Configure firewall
+  ansible.builtin.import_tasks: firewall.yml
+  tags:
+    - paperless
+    - firewall
+
+- name: Setup Python environment
+  ansible.builtin.import_tasks: python.yml
+  tags:
+    - paperless
+    - python
+
+- name: Setup systemd services
+  ansible.builtin.import_tasks: services.yml
+  tags:
+    - paperless
+    - services
+
+- name: Cleanup temporary files
+  ansible.builtin.import_tasks: cleanup.yml
+  tags:
+    - paperless
+    - cleanup

@@ -1,0 +1,88 @@
+---
+- name: Check if Python virtual environment exists
+  ansible.builtin.stat:
+    path: "{{ paperless_home }}/venv/bin/pip"
+  register: venv_exists
+
+- name: Create Python virtual environment
+  ansible.builtin.command:
+    cmd: python3 -m venv {{ paperless_home }}/venv
+    creates: "{{ paperless_home }}/venv/bin/pip"
+  become: true
+  register: venv_create_result
+  changed_when: venv_create_result.rc == 0
+  failed_when: venv_create_result.rc != 0
+  when: not venv_exists.stat.exists
+
+- name: Set ownership of virtual environment
+  ansible.builtin.file:
+    path: "{{ paperless_home }}/venv"
+    owner: "{{ paperless_user }}"
+    group: "{{ paperless_group }}"
+    recurse: true
+  become: true
+  when: venv_create_result.changed | default(false)
+  # noqa: no-handler - must run immediately after venv creation
+
+- name: Upgrade pip in virtual environment
+  ansible.builtin.shell:
+    cmd: >
+      su - {{ paperless_user }} -c
+      "{{ paperless_home }}/venv/bin/pip install --upgrade pip"
+  become: true
+  register: pip_upgrade_result
+  changed_when: "'Successfully installed' in pip_upgrade_result.stdout"
+  # noqa: command-instead-of-shell - su requires shell due to ACL issues
+
+- name: Install Paperless-ngx dependencies from requirements.txt
+  ansible.builtin.shell:
+    cmd: >
+      su - {{ paperless_user }} -c
+      "cd {{ paperless_home }} &&
+      {{ paperless_home }}/venv/bin/pip install
+      -r {{ paperless_home }}/requirements.txt"
+  become: true
+  register: pip_install_deps
+  changed_when: "'Successfully installed' in pip_install_deps.stdout or 'Requirement already satisfied' not in pip_install_deps.stdout"
+  failed_when: pip_install_deps.rc != 0
+  # noqa: command-instead-of-shell - su requires shell due to ACL issues
+  tags:
+    - paperless
+    - python
+    - dependencies
+
+- name: Run database migrations
+  ansible.builtin.shell:
+    cmd: >
+      su - {{ paperless_user }} -c
+      "cd {{ paperless_home }}/src &&
+      set -a && . {{ paperless_home }}/paperless.conf && set +a &&
+      {{ paperless_home }}/venv/bin/python manage.py migrate"
+  become: true
+  register: migration_result
+  changed_when: "'No migrations to apply' not in migration_result.stdout"
+  # noqa: command-instead-of-shell - su requires shell due to ACL issues
+
+- name: Create superuser (if enabled)
+  ansible.builtin.shell:
+    cmd: >
+      su - {{ paperless_user }} -c
+      "cd {{ paperless_home }}/src &&
+      set -a && . {{ paperless_home }}/paperless.conf && set +a &&
+      DJANGO_SUPERUSER_PASSWORD='{{ paperless_superuser_password }}'
+      {{ paperless_home }}/venv/bin/python manage.py createsuperuser
+      --noinput
+      --username {{ paperless_superuser_name }}
+      --email {{ paperless_superuser_email }}"
+  become: true
+  when: paperless_create_superuser | bool
+  register: superuser_result
+  failed_when: >
+    superuser_result.rc != 0 and
+    'already taken' not in superuser_result.stderr | default('')
+  changed_when: superuser_result.rc == 0
+  no_log: true
+  # noqa: command-instead-of-shell - su requires shell due to ACL issues
+  tags:
+    - paperless
+    - superuser

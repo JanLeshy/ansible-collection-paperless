@@ -1,0 +1,79 @@
+---
+- name: Create paperless system group
+  ansible.builtin.group:
+    name: "{{ paperless_group }}"
+    system: true
+    state: present
+
+- name: Create paperless system user
+  ansible.builtin.user:
+    name: "{{ paperless_user }}"
+    home: "{{ paperless_home }}"
+    system: true
+    group: "{{ paperless_group }}"
+    create_home: true
+    shell: /bin/bash
+
+- name: Get latest paperless version if needed
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/paperless-ngx/paperless-ngx/releases/latest"
+    return_content: true
+  register: paperless_latest_release
+  when: paperless_version == "latest"
+
+- name: Set paperless version
+  ansible.builtin.set_fact:
+    paperless_actual_version: "{{ paperless_latest_release.json.tag_name | default(paperless_version) }}"
+    paperless_archive_name: "paperless-ngx-{{ paperless_latest_release.json.tag_name | default(paperless_version) }}.tar.xz"
+
+- name: Download paperless-ngx archive
+  ansible.builtin.get_url:
+    url: "https://github.com/paperless-ngx/paperless-ngx/releases/download/{{ paperless_actual_version }}/paperless-ngx-{{ paperless_actual_version }}.tar.xz"
+    dest: "{{ paperless_tmp_dir }}/{{ paperless_archive_name }}"
+    mode: '0644'
+
+- name: Extract paperless-ngx archive
+  ansible.builtin.unarchive:
+    src: "{{ paperless_tmp_dir }}/{{ paperless_archive_name }}"
+    dest: "{{ paperless_tmp_dir }}"
+    remote_src: true
+  register: archive_extracted
+
+- name: Set extracted directory path
+  ansible.builtin.set_fact:
+    paperless_extracted_dir: "{{ paperless_tmp_dir }}/paperless-ngx"
+
+- name: Find systemd service examples in archive
+  ansible.builtin.find:
+    paths: "{{ paperless_extracted_dir }}/scripts"
+    patterns: "*.service"
+    file_type: file
+  register: service_examples
+  failed_when: false
+
+- name: Fail if no systemd service files found in archive
+  ansible.builtin.fail:
+    msg: "No systemd service files found in paperless-ngx archive"
+  when: service_examples.matched == 0
+
+- name: Copy paperless-ngx files to home directory
+  ansible.builtin.copy:
+    src: "{{ paperless_extracted_dir }}/"
+    dest: "{{ paperless_home }}/"
+    remote_src: true
+    owner: "{{ paperless_user }}"
+    group: "{{ paperless_group }}"
+    mode: preserve
+  become: true
+
+- name: Create required directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ paperless_user }}"
+    group: "{{ paperless_group }}"
+    mode: '0755'
+  loop:
+    - "{{ paperless_media_dir }}"
+    - "{{ paperless_data_dir }}"
+    - "{{ paperless_consume_dir }}"

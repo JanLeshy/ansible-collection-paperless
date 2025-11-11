@@ -1,0 +1,37 @@
+---
+namespace: JanLeshy
+name: paperless
+version: 1.0.0
+readme: README.md
+authors:
+  - Jan Leshy <https://github.com/JanLeshy>
+description: Ansible Collection for deploying and managing Paperless-ngx document management system
+license:
+  - MIT
+license_file: ''
+tags:
+  - paperless
+  - paperless_ngx
+  - document_management
+  - dms
+  - ocr
+  - archive
+  - postgresql
+  - redis
+  - systemd
+  - homelab
+repository: https://github.com/JanLeshy/ansible-collection-paperless
+documentation: https://github.com/JanLeshy/ansible-collection-paperless
+homepage: https://github.com/JanLeshy/ansible-collection-paperless
+issues: https://github.com/JanLeshy/ansible-collection-paperless/issues
+build_ignore:
+  - .gitignore
+  - .git
+  - .github
+  - '*.tar.gz'
+  - __pycache__
+  - .pytest_cache
+  - .vscode
+  - .idea
+dependencies: {}
+
