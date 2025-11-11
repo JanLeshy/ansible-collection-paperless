@@ -93,7 +93,7 @@ This role has no external Ansible dependencies. All required packages are instal
   become: true
   
   roles:
-    - role: paperless-ngx
+    - role: janleshy.paperless.paperless_ngx
 ```
 
 ### Advanced Configuration
@@ -117,7 +117,7 @@ This role has no external Ansible dependencies. All required packages are instal
     - vault.yml  # Contains: paperless_db_password, paperless_secret_key, paperless_superuser_password
   
   roles:
-    - role: paperless-ngx
+    - role: janleshy.paperless.paperless_ngx
 ```
 
 ### With External Database
@@ -131,7 +131,7 @@ This role has no external Ansible dependencies. All required packages are instal
     paperless_db_url: "postgresql://paperless:secure_password@db.example.com:5432/paperless"
   
   roles:
-    - role: paperless-ngx
+    - role: janleshy.paperless.paperless_ngx
 ```
 
 ## Vault Example
